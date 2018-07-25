@@ -46,7 +46,6 @@ Function SendMail ($Company) {
     foreach ($grabbedlicentie in $grablicenties) {
         ## setting up variables for highest and lowest counter.
         $licentie = $grabbedlicentie.Field
-        Write-Host "$licentie"
         if ($licentie -ne "RIGHTSMANAGEMENT_ADHOC_O365") {
             $licenties += $grabbedlicentie.Field
             $rowchecker = (run-MySQLQuery -ConnectionString $ConnectionString -Query "SELECT $licentie FROM user_counter WHERE company='$Company' AND Month='$lastMonth' ORDER By Date ASC;")
@@ -56,7 +55,6 @@ Function SendMail ($Company) {
             New-Variable -Name "$($licentie)_check" -Value $countcheck -Force
             New-Variable -Name "$($licentie)_High" -Value 0 -Force
             New-Variable -Name "$($licentie)_Low" -Value 1000 -Force
-            New-Variable -Name "$($licentie)_Total" -Value 0 -Force
         }
     }
     ## Zeroing some variables used to calculate highest numbers
@@ -83,13 +81,6 @@ Function SendMail ($Company) {
         $RDSUsers = [int]$row[6]
         $MailboxUsers = [int]$row[7]
         $EXCLUDED = [int]$row[8]
-        
-        ## Count total amount of users
-        $ADUsersTotal = $ADUsersTotal+$ADUsers
-        $OfficeUsersTotal = $OfficeUsersTotal+$OfficeUsers
-        $RDSUsersTotal = $RDSUsersTotal+$RDSUsers
-        $MailboxUsersTotal = $MailboxUsersTotal+$MailboxUsers
-        $EXCLUDEDTotal = $EXCLUDEDTotal+$EXCLUDED
 
         ## Getting Lowest numbers
         if ($ADUsers -lt $ADUsersLow) {
@@ -125,15 +116,8 @@ Function SendMail ($Company) {
         }
     }
 
-    ## Count user count average
-    $ADUsersAverage = [math]::Round($ADUsersTotal/$Rowcounter)
-    $OfficeUsersAverage = [math]::Round($OfficeUsersTotal/$Rowcounter)
-    $RDSUsersAverage = [math]::Round($RDSUsersTotal/$Rowcounter)
-    $MailboxUsersAverage = [math]::Round($MailboxUsersTotal/$Rowcounter)
-    $EXCLUDEDAverage = [math]::Round($EXCLUDEDTotal/$Rowcounter)
-
     ## Start table
-    if ($maillogo -ne "<urltomaillogo>") { $body += "<center><img src='$maillogo'></center><br><br>" }
+    $body += "<center><img src='https://ictteamwork.nl/assets/uploads/2017/03/logo_icttw2.png'></center><br><br>"
     $body += "<center><font face='tahoma' color='#003399' size='4'><strong>Licentie rapportage $Company - Maand Nr: $lastMonth</strong></font></center><br><br>"
     $body += "<table id='customers'>"
     
@@ -198,28 +182,12 @@ Function SendMail ($Company) {
                     if ($((Get-Variable -Name "$($licentie)").Value) -lt $((Get-Variable -Name "$($licentie)_Low").Value)) {
                         Set-Variable -Name "$($licentie)_Low" -Value "$((Get-Variable -Name "$($licentie)").Value)" -Force
                     }
-                    [int]$endtotal = $endtotal + $licensecount[0]
-                    Set-Variable -Name "$($licentie)_Total" -Value $endtotal
                 }
             }
         }
         $body += "<td>$EXCLUDED</td>"
         $body += "</tr>"
     }
-    ## Average, Highest, Lowest numbers
-    ## Average total.
-    $body += "<tr><th colspan='1'>Gemiddelde deze maand:</th><th>$ADUsersAverage</th>"
-    if($OfficeUsersHigh -gt 0) { $body += "<th> $OfficeUsersAverage</th>" }
-    if($RDSUsersHigh -gt 0) { $body += "<th>$RDSUsersAverage</th>" }
-    if($MailboxUsersHigh -gt 0) { $body += "<th>$MailboxUsersAverage</th>" }
-    foreach ($licentie in $licenties) {
-        if($((Get-Variable -Name "$($licentie)_check").Value) -gt 0) {
-            [int]$total = $(Get-Variable -Name "$($licentie)_Total").Value
-            $average = [math]::Round($total/$avaragerowcounter)
-            $body += "<th>$average</th>"
-        }
-    }
-    $body += "<th>$EXCLUDEDAverage</th></tr>"
 
     ## Lowest totals.
     $body += "<tr><th colspan='1'>Laagste deze maand:</th><th>$ADUsersLow</th>"
