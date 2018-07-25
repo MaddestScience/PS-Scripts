@@ -1,0 +1,2 @@
+admin@company.onmicrosoft.com
+<password>
